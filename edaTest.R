@@ -12,7 +12,7 @@ library(tidyverse)
 
 lifeHappy <- read_csv("le_v_h.csv")
 
-## Use dplyr to tidy the data by cleaning up the column names and removing spaces
+## Use dplyr to tidy the data by cleaning up the column names and removing spaces, then removing NAs
 
 lifeHappyclean <- lifeHappy %>%
   rename(cantrilScore = "Cantril ladder score", lifeExpectancy = "Life expectancy - Sex: all - Age: 0 - Variant: estimates") %>%
@@ -34,8 +34,36 @@ e <- lifeHappyclean %>%
   ggtitle("Life expectancy versus happiness coefficient") +
   xlab("Cantril ladder score") +
   ylab("Average life expectancy") +
-  geom_tex(aes(filter(label=Entity))
+  geom_text(aes(label=Entity))
 
 
 ## plot the graph
+e
+
+## Or, we can calculate outliers using the inter-quartile range (IQR) method
+
+model <- lm(lifeExpectancy ~ cantrilScore, data = lifeHappyclean)
+lifeHappyclean$residuals <- resid(model)
+Q1 <- quantile(lifeHappyclean$residuals, 0.25)
+Q3 <- quantile(lifeHappyclean$residuals, 0.75)
+IQR <- Q3 - Q1
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+outliers <- lifeHappyclean %>% filter(residuals < lower_bound | residuals > upper_bound)
+
+## now plot the chart with only outliers shown
+
+e <- lifeHappyclean %>%
+  ggplot(aes(cantrilScore, lifeExpectancy)) +
+  geom_point() + 
+  ## add a line of best fit
+  geom_smooth(aes(cantrilScore, lifeExpectancy), method="lm", se=F) +
+  ## add axis labels
+  ggtitle("Life expectancy versus happiness coefficient") +
+  xlab("Cantril ladder score") +
+  ylab("Average life expectancy") +
+  geom_point(data = outliers, aes(x = cantrilScore, y = lifeExpectancy), color = 'red', size = 3) +
+  geom_text(data = outliers, aes(label=Entity))
+
 e
